@@ -1,0 +1,344 @@
+rules_version = '2';
+
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// This security rules file assumes the following data structures:
+//
+// Collection: admins
+// Document ID: {adminId} (matches admin Firebase Auth UID)
+// Fields:
+//   - id: string (required, matches adminId, immutable) - Unique admin identifier
+//   - name: string (required, 1-100 chars) - Admin full name
+//   - email: string (required, valid email, max 254 chars) - Admin email address
+//   - role: string (required, 1-50 chars) - Administrative role (e.g. 'admin', 'superadmin')
+//
+// Collection: lectures
+// Document ID: {lectureId} (unique identifier)
+// Fields:
+//   - id: string (required, matches lectureId, immutable) - Lecture identifier
+//   - title: string (required, 1-200 chars) - Lecture title
+//   - speakerName: string (required, 1-100 chars) - Speaker full name
+//   - designation: string (required, 1-100 chars) - Speaker designation/job title
+//   - company: string (required, 1-100 chars) - Speaker company or organization
+//   - dateTime: timestamp | string (required) - Date and time of the lecture
+//   - venue: string (required, 1-100 chars) - Venue location
+//   - department: string (required, 1-100 chars) - Organizing department
+//   - academicYear: string (required, 1-50 chars) - Academic year (e.g., '2025-2026')
+//   - status: string (required, enum: 'draft' | 'active' | 'closed') - Lecture lifecycle status
+//   - createdAt: timestamp (required, immutable) - Creation timestamp
+//   - responseCount: int (required, >= 0) - Total count of student responses
+//
+// Subcollection: lectures/{lectureId}/responses/{responseId}
+// Document ID: {responseId} (student's register number, uppercased and trimmed)
+// Fields:
+//   - email: string (required, valid email regex, max 254 chars) - Student email address
+//   - name: string (required, 1-100 chars) - Student full name
+//   - registerNumber: string (required, matches responseId, 1-50 chars) - Student register number
+//   - programme: string (required, enum in ['MCA', 'B.Sc. Computer Systems and Design', 'BCA', 'B.Sc. Computer Science', 'Other'])
+//   - yearOfStudy: string (required, enum in ['I Year', 'II Year', 'III Year', 'IV Year', 'V Year'])
+//   - lectureTitle: string (required, matches parent lecture title) - Lecture title verification
+//   - relevanceRating: int (required, 1-5) - Content relevance rating
+//   - usefulnessRating: int (required, 1-5) - Practical usefulness rating
+//   - understandingImproved: string (required, enum in ['Yes, significantly', 'Yes, to some extent', 'Not much', 'No'])
+//   - mainTakeaway: string (required, 1-2000 chars) - Key takeaways from the session
+//   - attendMore: string (required, enum in ['Definitely', 'Probably', 'Maybe', 'No']) - Intent to attend future sessions
+//   - futureTopics: list of strings (required, size >= 1 && <= 9, elements in allowed enum list) - Requested topics
+//   - suggestions: string (required, 0-2000 chars) - Additional suggestions/comments
+//   - satisfactionRating: int (required, 1-5) - Overall satisfaction rating
+//   - submittedAt: timestamp (required, equals request.time) - Server submission timestamp
+//
+// ===============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Global Helper Functions
+    // ===============================================================
+
+    // Check if the user is authenticated via Firebase Auth
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Check if the authenticated user is registered as an admin
+    function isAdmin() {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    // Validate standard email format
+    function isValidEmail(email) {
+      return email is string &&
+        email.size() <= 254 &&
+        email.matches('^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9]+([.-][a-zA-Z0-9]+)*\\.[a-zA-Z]{2,}$');
+    }
+
+    // ===============================================================
+    // Domain Validator: Admins
+    // ===============================================================
+
+    function hasValidAdminFields(data) {
+      let expectedFields = ['id', 'name', 'email', 'role'];
+      return data.keys().hasAll(expectedFields) &&
+             data.keys().hasOnly(expectedFields);
+    }
+
+    function isValidAdmin(data, adminId) {
+      return hasValidAdminFields(data) &&
+        data.id is string &&
+        data.id == adminId &&
+        data.name is string &&
+        data.name.size() >= 1 &&
+        data.name.size() <= 100 &&
+        isValidEmail(data.email) &&
+        data.role is string &&
+        data.role.size() >= 1 &&
+        data.role.size() <= 50;
+    }
+
+    // ===============================================================
+    // Domain Validator: Lectures
+    // ===============================================================
+
+    function hasValidLectureFields(data) {
+      let requiredFields = [
+        'id',
+        'title',
+        'speakerName',
+        'designation',
+        'company',
+        'dateTime',
+        'venue',
+        'department',
+        'academicYear',
+        'status',
+        'createdAt',
+        'responseCount'
+      ];
+      let optionalFields = [
+        'responseTarget',
+        'lastFeedbackAt',
+        'reminder24hSent',
+        'reminderSentAt'
+      ];
+      return data.keys().hasAll(requiredFields) &&
+             data.keys().hasOnly(requiredFields.concat(optionalFields));
+    }
+
+    function isValidLecture(data, lectureId) {
+      return hasValidLectureFields(data) &&
+        data.id is string &&
+        data.id == lectureId &&
+        data.title is string &&
+        data.title.size() >= 1 &&
+        data.title.size() <= 200 &&
+        data.speakerName is string &&
+        data.speakerName.size() >= 1 &&
+        data.speakerName.size() <= 100 &&
+        data.designation is string &&
+        data.designation.size() >= 1 &&
+        data.designation.size() <= 100 &&
+        data.company is string &&
+        data.company.size() >= 1 &&
+        data.company.size() <= 100 &&
+        (data.dateTime is timestamp || (data.dateTime is string && data.dateTime.size() >= 1 && data.dateTime.size() <= 100)) &&
+        data.venue is string &&
+        data.venue.size() >= 1 &&
+        data.venue.size() <= 100 &&
+        data.department is string &&
+        data.department.size() >= 1 &&
+        data.department.size() <= 100 &&
+        data.academicYear is string &&
+        data.academicYear.size() >= 1 &&
+        data.academicYear.size() <= 50 &&
+        data.status is string &&
+        data.status in ['draft', 'active', 'closed'] &&
+        data.createdAt is timestamp &&
+        data.responseCount is int &&
+        data.responseCount >= 0 &&
+        (!('responseTarget' in data) || (data.responseTarget is int && data.responseTarget > 0));
+    }
+
+    function areImmutableLectureFieldsUnchanged() {
+      return request.resource.data.id == resource.data.id &&
+             request.resource.data.createdAt == resource.data.createdAt;
+    }
+
+    // ===============================================================
+    // Domain Validator: Responses
+    // ===============================================================
+
+    function hasValidResponseFields(data) {
+      let expectedFields = [
+        'email',
+        'name',
+        'registerNumber',
+        'programme',
+        'yearOfStudy',
+        'lectureTitle',
+        'relevanceRating',
+        'usefulnessRating',
+        'understandingImproved',
+        'mainTakeaway',
+        'attendMore',
+        'futureTopics',
+        'suggestions',
+        'satisfactionRating',
+        'submittedAt'
+      ];
+      return data.keys().hasAll(expectedFields) &&
+             data.keys().hasOnly(expectedFields);
+    }
+
+    function isValidFutureTopics(topics) {
+      let allowedTopics = [
+        'Career Guidance',
+        'Industry Experience',
+        'Artificial Intelligence & Machine Learning',
+        'Software Development',
+        'Emerging Technologies',
+        'Higher Studies',
+        'Entrepreneurship',
+        'Placement Preparation',
+        'Other'
+      ];
+      return topics is list &&
+             topics.size() >= 1 &&
+             topics.size() <= 9 &&
+             topics.hasOnly(allowedTopics);
+    }
+
+    function isValidLectureReference(data, lectureId) {
+      return exists(/databases/$(database)/documents/lectures/$(lectureId)) &&
+             get(/databases/$(database)/documents/lectures/$(lectureId)).data.status == 'active' &&
+             data.lectureTitle == get(/databases/$(database)/documents/lectures/$(lectureId)).data.title;
+    }
+
+    function isValidResponse(data, lectureId, responseId) {
+      return hasValidResponseFields(data) &&
+        isValidLectureReference(data, lectureId) &&
+        data.registerNumber is string &&
+        data.registerNumber == responseId &&
+        data.registerNumber.size() >= 1 &&
+        data.registerNumber.size() <= 50 &&
+        data.name is string &&
+        data.name.size() >= 1 &&
+        data.name.size() <= 100 &&
+        isValidEmail(data.email) &&
+        data.programme is string &&
+        data.programme in ['MCA', 'B.Sc. Computer Systems and Design', 'BCA', 'B.Sc. Computer Science', 'Other'] &&
+        data.yearOfStudy is string &&
+        data.yearOfStudy in ['I Year', 'II Year', 'III Year', 'IV Year', 'V Year'] &&
+        data.relevanceRating is int &&
+        data.relevanceRating >= 1 &&
+        data.relevanceRating <= 5 &&
+        data.usefulnessRating is int &&
+        data.usefulnessRating >= 1 &&
+        data.usefulnessRating <= 5 &&
+        data.satisfactionRating is int &&
+        data.satisfactionRating >= 1 &&
+        data.satisfactionRating <= 5 &&
+        data.understandingImproved is string &&
+        data.understandingImproved in ['Yes, significantly', 'Yes, to some extent', 'Not much', 'No'] &&
+        data.mainTakeaway is string &&
+        data.mainTakeaway.size() >= 1 &&
+        data.mainTakeaway.size() <= 2000 &&
+        data.attendMore is string &&
+        data.attendMore in ['Definitely', 'Probably', 'Maybe', 'No'] &&
+        isValidFutureTopics(data.futureTopics) &&
+        data.suggestions is string &&
+        data.suggestions.size() <= 2000 &&
+        data.submittedAt is timestamp &&
+        data.submittedAt == request.time;
+    }
+
+    // ===============================================================
+    // Collection Rules
+    // ===============================================================
+
+    // ---------------------------------------------------------------
+    // 1. Admins Collection
+    // ---------------------------------------------------------------
+    match /admins/{adminId} {
+      // Only authenticated admins can read admin records
+      allow read: if isAdmin();
+
+      // Only authenticated admins can add new admins
+      allow create: if isAdmin() &&
+                       isValidAdmin(request.resource.data, adminId);
+
+      // Only authenticated admins can update admin records (id is immutable)
+      allow update: if isAdmin() &&
+                       isValidAdmin(request.resource.data, adminId) &&
+                       request.resource.data.id == resource.data.id;
+
+      // Only authenticated admins can remove admins
+      allow delete: if isAdmin();
+    }
+
+    // ---------------------------------------------------------------
+    // 2. Lectures Collection
+    // ---------------------------------------------------------------
+    match /lectures/{lectureId} {
+      // Authenticated admins can read all lectures; public can read active and closed lectures to view form status
+      allow read: if isAdmin() || resource.data.status in ['active', 'closed'];
+
+      // Only authenticated admins can create lectures
+      allow create: if isAdmin() &&
+                       isValidLecture(request.resource.data, lectureId) &&
+                       request.resource.data.createdAt <= request.time;
+
+      // Allow authenticated admins full update; OR allow student submission to atomically increment responseCount on active lectures
+      allow update: if (isAdmin() &&
+                        isValidLecture(request.resource.data, lectureId) &&
+                        areImmutableLectureFieldsUnchanged()) ||
+                       (resource.data.status == 'active' &&
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['responseCount']) &&
+                        request.resource.data.responseCount == resource.data.responseCount + 1);
+
+      // Only authenticated admins can delete lectures
+      allow delete: if isAdmin();
+
+      // -------------------------------------------------------------
+      // 3. Responses Subcollection
+      // -------------------------------------------------------------
+      match /responses/{responseId} {
+        // Only authenticated admins can read responses (protects student PII and survey data)
+        allow read: if isAdmin();
+
+        // Anyone (public/unauthenticated student) can submit a response if and only if:
+        // - Parent lecture is active and title matches
+        // - Document ID matches student registerNumber (prevents duplicate submission for same student)
+        // - All fields are strictly validated with no extra fields allowed
+        // - submittedAt equals the request server timestamp
+        allow create: if isValidResponse(request.resource.data, lectureId, responseId);
+
+        // Feedback submissions are immutable; updates are strictly prohibited
+        allow update: if false;
+
+        // Only authenticated admins can delete responses (e.g., for moderation/cleanup); public cannot
+        allow delete: if isAdmin();
+      }
+    }
+
+    // ---------------------------------------------------------------
+    // 4. Collection Group: responses (Admin Global Dashboard & Analytics)
+    // ---------------------------------------------------------------
+    match /{path=**}/responses/{responseId} {
+      allow read: if isAdmin();
+    }
+
+    // ---------------------------------------------------------------
+    // 5. App Settings Collection
+    // ---------------------------------------------------------------
+    match /settings/{settingId} {
+      // Allow anyone to read public settings (like college_profile for logo/name)
+      allow read: if true;
+      // Only authenticated admins can modify settings
+      allow write: if isAdmin();
+    }
+  }
+}

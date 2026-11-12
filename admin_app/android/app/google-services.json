@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "545670362177",
+    "project_id": "alumni-feedback-5b0e1",
+    "storage_bucket": "alumni-feedback-5b0e1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:545670362177:android:4e7423474118d2608382c0",
+        "android_client_info": {
+          "package_name": "com.college.alumnifeedback.admin"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC3FskVYrhg3c31-mKUqu8L93A7NUwbju8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

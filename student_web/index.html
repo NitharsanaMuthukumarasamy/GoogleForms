@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+  <meta name="theme-color" content="#0B2545" />
+  <meta name="description" content="Official feedback form for college alumni guest lectures." />
+  <title>Alumni Guest Lecture - Feedback Form</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <!-- Preconnect to Google Fonts for optimal performance -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <!-- Sticky Live Progress Tracker -->
+  <div class="progress-container" id="progressContainer">
+    <div class="progress-bar-track">
+      <div class="progress-bar-fill" id="progressBarFill"></div>
+    </div>
+    <div class="progress-text-wrap">
+      <span id="progressText">0 of 13 answered (0%)</span>
+      <span>Alumni Feedback Portal</span>
+    </div>
+  </div>
+
+  <div class="form-wrapper">
+
+    <!-- 1. LOADING STATE -->
+    <div class="card status-card" id="loadingState">
+      <div class="spinner" style="width: 36px; height: 36px; border-width: 3px; border-top-color: #0B2545; border-color: #E2E8F0; margin: 0 auto 16px;"></div>
+      <h2 class="status-title" style="font-size: 18px;">Loading Feedback Form...</h2>
+      <p class="status-desc" style="font-size: 13px;">Connecting to lecture session data...</p>
+    </div>
+
+    <!-- 2. CLOSED STATE -->
+    <div class="card status-card hidden" id="closedState">
+      <div class="status-icon-wrap status-icon-closed">
+        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+        </svg>
+      </div>
+      <h2 class="status-title" id="closedStateTitle">This feedback form is closed</h2>
+      <p class="status-desc" id="closedStateDesc">
+        The feedback session for this alumni lecture is either completed or not yet active. Please contact the session coordinator if you think this is a mistake.
+      </p>
+    </div>
+
+    <!-- 3. ALREADY SUBMITTED STATE -->
+    <div class="card status-card hidden" id="alreadySubmittedState">
+      <div class="status-icon-wrap status-icon-duplicate">
+        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+      </div>
+      <h2 class="status-title">You have already submitted feedback for this lecture.</h2>
+      <p class="status-desc">
+        Each student register number may only submit once per lecture. If you believe this is an error or need to update your details, please contact your session coordinator.
+      </p>
+    </div>
+
+    <!-- 4. THANK YOU / RECORDED STATE -->
+    <div class="card status-card hidden" id="thankYouState">
+      <div class="status-icon-wrap status-icon-success">
+        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M20 6L9 17l-5-5"></path>
+        </svg>
+      </div>
+      <h2 class="status-title">Thank You!</h2>
+      <p class="status-desc" style="font-size: 16px; font-weight: 600; color: #0B2545; margin-bottom: 8px;">
+        Your response has been recorded.
+      </p>
+      <p class="status-desc">
+        Thank you for attending the alumni guest lecture and sharing your valuable feedback. Your insights help us improve future academic and alumni activities.
+      </p>
+    </div>
+
+    <!-- 5. ACTIVE FORM CONTAINER -->
+    <div id="formContainer" class="hidden">
+
+      <!-- Anti-Spam / Rate-limit Alert Banner -->
+      <div id="spamAlertBanner" class="card hidden" style="border-color: #FCA5A5; background-color: #FEF2F2; color: #DC2626; padding: 14px 18px; margin-bottom: 16px; font-size: 13px; font-weight: 600;">
+        <span id="spamAlertText"></span>
+      </div>
+
+      <!-- Header Card -->
+      <div class="card header-card">
+        <div class="college-emblem-row">
+          <div class="college-logo-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
+              <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
+            </svg>
+          </div>
+          <div>
+            <h1 class="form-title">Alumni Guest Lecture - Feedback Form</h1>
+          </div>
+        </div>
+
+        <p class="form-intro">
+          Thank you for attending the alumni guest lecture. Please share your valuable feedback about the lecture, speaker, content, and overall session. Your feedback will help us improve future academic and alumni activities.
+        </p>
+
+        <div class="required-notice">
+          * Indicates required question
+        </div>
+      </div>
+
+      <!-- Automatically Loaded Lecture Details Card -->
+      <div class="card lecture-card" id="lectureDetailsCard">
+        <div class="lecture-badge-row">
+          <div class="live-badge">
+            <div class="live-badge-dot"></div>
+            <span>LIVE SESSION</span>
+          </div>
+        </div>
+        <div class="lecture-topic" id="lectureTitleDisplay">Loading Topic...</div>
+        <div class="lecture-speaker" id="lectureSpeakerDisplay">Loading Speaker...</div>
+        <div class="lecture-meta" id="lectureMetaDisplay">Loading Date & Venue...</div>
+      </div>
+
+      <!-- Dynamic Questionnaire Form -->
+      <form id="feedbackForm" novalidate>
+        <!-- Anti-Spam Honeypot Field (Invisible to human users, traps automated bots) -->
+        <div style="position: absolute; left: -9999px; top: -9999px; width: 0; height: 0; opacity: 0; overflow: hidden; pointer-events: none;" aria-hidden="true">
+          <label for="form_hp_secondary_email">Do not fill this field</label>
+          <input type="text" id="form_hp_secondary_email" name="form_hp_secondary_email" tabindex="-1" autocomplete="off" />
+        </div>
+
+        <div id="questionsContainer"></div>
+
+        <!-- Footer Actions -->
+        <div class="form-actions">
+          <button type="submit" class="btn-submit" id="submitBtn">
+            <span>Submit Response</span>
+          </button>
+          <button type="button" class="btn-clear" id="clearBtn">
+            Clear form
+          </button>
+        </div>
+      </form>
+
+    </div>
+
+  </div>
+
+  <!-- Clear Form Confirmation Modal -->
+  <div class="modal-overlay" id="clearModal">
+    <div class="modal-card">
+      <h3 class="modal-title">Clear form?</h3>
+      <p class="modal-desc">
+        This will remove your answers from all questions and cannot be undone.
+      </p>
+      <div class="modal-actions">
+        <button type="button" class="btn-clear" id="cancelClearBtn">Cancel</button>
+        <button type="button" class="btn-submit" id="confirmClearBtn" style="background-color: #DC2626; padding: 8px 16px; min-height: 38px;">
+          Clear answers
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Centralized Questions Definition -->
+  <script src="js/questions.js"></script>
+
+  <!-- Application Logic & Firebase Integration -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
