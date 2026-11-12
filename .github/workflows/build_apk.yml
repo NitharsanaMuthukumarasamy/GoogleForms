@@ -24,10 +24,10 @@ jobs:
           flutter-version: '3.29.0'
           channel: 'stable'
 
-      - name: Configure Android Embedding & Gradle
+      - name: Install Dependencies
         run: |
           cd admin_app
-          flutter create --platforms=android --org com.college.alumnifeedback .
+          chmod +x android/gradlew
           flutter pub get
 
       - name: Build Release APK
