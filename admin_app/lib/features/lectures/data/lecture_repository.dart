@@ -26,6 +26,18 @@ class LectureRepository {
     });
   }
 
+  /// One-time fetch of all responses for a given lecture.
+  Future<List<FeedbackResponse>> getResponses(String lectureId) async {
+    final snapshot = await _lecturesCollection
+        .doc(lectureId)
+        .collection('responses')
+        .orderBy('submittedAt', descending: true)
+        .get();
+    return snapshot.docs
+        .map((doc) => FeedbackResponse.fromFirestore(doc))
+        .toList();
+  }
+
   /// Real-time stream of all feedback responses across all lectures (via collectionGroup).
   Stream<List<FeedbackResponse>> watchAllResponses() {
     return _firestore

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
-import '../../settings/presentation/controllers/settings_controller.dart';
+import '../controllers/settings_controller.dart';
 
 /// Comprehensive Admin Settings Screen.
 ///

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../data/lecture_repository.dart';
 import '../../domain/lecture_model.dart';
 import '../../domain/feedback_response_model.dart';
@@ -15,6 +16,9 @@ final lecturesStreamProvider = StreamProvider<List<Lecture>>((ref) {
   final repo = ref.watch(lectureRepositoryProvider);
   return repo.watchLectures();
 });
+
+/// Alias for screen compatibility
+final allLecturesStreamProvider = lecturesStreamProvider;
 
 /// Single lecture stream provider by lecture ID.
 final lectureDetailProvider = StreamProvider.family<Lecture?, String>((ref, id) {
